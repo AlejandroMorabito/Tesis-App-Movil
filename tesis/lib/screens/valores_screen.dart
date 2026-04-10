@@ -13,82 +13,29 @@ class ValoresScreen extends StatelessWidget {
         .toList();
 
     if (chips.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🔒', style: TextStyle(fontSize: 64)),
-            const SizedBox(height: 20),
-            const Text('No tienes acceso a dispositivos',
-                style: TextStyle(fontSize: 18, color: Color(0xFF666666))),
-            const SizedBox(height: 10),
-            Text('Permisos actuales: ${dbService.userPermissions.length} dispositivos registrados',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
+            Text('🔒', style: TextStyle(fontSize: 64)),
+            SizedBox(height: 20),
+            Text('No tienes acceso a dispositivos', style: TextStyle(fontSize: 18, color: Color(0xFF666666))),
           ],
         ),
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('📈 Valores en Vivo',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4FD),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Text('Tienes acceso a ${chips.length} dispositivo(s)',
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF666666))),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E8),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text('✅ Mostrando solo dispositivos con acceso autorizado',
-                style: TextStyle(fontSize: 11, color: Color(0xFF28A745))),
-          ),
-          const SizedBox(height: 10),
-          const Text('💡 Haz clic en cualquier tarjeta para controlar el dispositivo',
-              style: TextStyle(fontSize: 12, color: Color(0xFF888888))),
-          const SizedBox(height: 25),
-
-          // Grid de tarjetas
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossCount = constraints.maxWidth > 700 ? 2 : 1;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossCount,
-                  crossAxisSpacing: 25,
-                  mainAxisSpacing: 25,
-                  childAspectRatio: crossCount == 1 ? 0.85 : 0.75,
-                ),
-                itemCount: chips.length,
-                itemBuilder: (_, i) => _DeviceCard(
-                  chipId: chips[i],
-                  dbService: dbService,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text('📈 Valores en Vivo',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+        const SizedBox(height: 4),
+        Text('${chips.length} dispositivo(s) con acceso',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
+        const SizedBox(height: 16),
+        ...chips.map((chipId) => _DeviceCard(chipId: chipId, dbService: dbService)),
+      ],
     );
   }
 }
@@ -106,66 +53,47 @@ class _DeviceCard extends StatelessWidget {
     final deviceName = device.name.isNotEmpty ? device.name : chipId;
 
     // Status
-    Color statusColor;
-    String statusIcon, statusText, statusDesc;
+    Color statusColor; String statusIcon, statusText, statusDesc;
     final hasActiveSensors = List.generate(5, (i) => sensors['c${i + 1}'] == true).any((v) => v);
     final hasAlarm = sensors['alarma'] == true || device.alarm;
 
     if (hasAlarm) {
-      statusColor = const Color(0xFFDC3545);
-      statusIcon = '🚨'; statusText = 'ALARMA ACTIVA'; statusDesc = '¡Se requiere atención inmediata!';
+      statusColor = const Color(0xFFDC3545); statusIcon = '🚨'; statusText = 'ALARMA'; statusDesc = '¡Atención inmediata!';
     } else if (hasActiveSensors) {
-      statusColor = const Color(0xFFFF9500);
-      statusIcon = '⚠️'; statusText = 'INTRUSIÓN'; statusDesc = 'Intrusión detectada - Alarma silenciosa';
+      statusColor = const Color(0xFFFF9500); statusIcon = '⚠️'; statusText = 'INTRUSIÓN'; statusDesc = 'Alarma silenciosa';
     } else if (sensors['armado'] == true || device.armed) {
-      statusColor = const Color(0xFF28A745);
-      statusIcon = '🛡️'; statusText = 'ARMADO'; statusDesc = 'Sistema vigilando';
+      statusColor = const Color(0xFF28A745); statusIcon = '🛡️'; statusText = 'ARMADO'; statusDesc = 'Sistema vigilando';
     } else {
-      statusColor = const Color(0xFF6C757D);
-      statusIcon = '🔓'; statusText = 'DESARMADO'; statusDesc = 'Sistema inactivo';
+      statusColor = const Color(0xFF6C757D); statusIcon = '🔓'; statusText = 'DESARMADO'; statusDesc = 'Sistema inactivo';
     }
 
-    // Signal quality
+    // Signal
     String signalQuality; Color signalColor;
-    if (device.rssi >= -50) {
-      signalQuality = 'Excelente'; signalColor = const Color(0xFF28A745);
-    } else if (device.rssi >= -65) {
-      signalQuality = 'Buena'; signalColor = const Color(0xFF4CD964);
-    } else if (device.rssi >= -75) {
-      signalQuality = 'Regular'; signalColor = const Color(0xFFFFC107);
-    } else {
-      signalQuality = 'Débil'; signalColor = const Color(0xFFDC3545);
-    }
+    if (device.rssi >= -50) { signalQuality = 'Excelente'; signalColor = const Color(0xFF28A745); }
+    else if (device.rssi >= -65) { signalQuality = 'Buena'; signalColor = const Color(0xFF4CD964); }
+    else if (device.rssi >= -75) { signalQuality = 'Regular'; signalColor = const Color(0xFFFFC107); }
+    else { signalQuality = 'Débil'; signalColor = const Color(0xFFDC3545); }
 
     int activeSensors = 0;
-    for (var i = 1; i <= 5; i++) {
-      if (sensors['c$i'] == true) activeSensors++;
-    }
+    for (var i = 1; i <= 5; i++) { if (sensors['c$i'] == true) activeSensors++; }
 
     return GestureDetector(
       onTap: () {
-        if (dbService.userPermissions[chipId] != true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('🔒 No tienes acceso a $chipId')),
-          );
-          return;
-        }
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-          ),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(15))),
           builder: (_) => ControlModal(chipId: chipId, dbService: dbService),
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border(left: BorderSide(color: statusColor.withOpacity(0.4), width: 2)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 4))],
+          borderRadius: BorderRadius.circular(14),
+          border: Border(left: BorderSide(color: statusColor, width: 4)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,118 +103,94 @@ class _DeviceCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(deviceName,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF333333)),
+                  child: Text(deviceName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(16)),
                   child: Text('$statusIcon $statusText',
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 4),
+            Text(statusDesc, style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
+            const SizedBox(height: 16),
 
-            // Status circle
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 100, height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.5)]),
-                      boxShadow: [BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 6))],
-                    ),
-                    child: Center(child: Text(statusIcon, style: const TextStyle(fontSize: 40))),
+            // Status circle + info
+            Row(
+              children: [
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.5)]),
                   ),
-                  const SizedBox(height: 10),
-                  Text(statusDesc, style: const TextStyle(color: Color(0xFF666666), fontSize: 14)),
-                ],
-              ),
+                  child: Center(child: Text(statusIcon, style: const TextStyle(fontSize: 28))),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('📶 Señal', style: TextStyle(fontSize: 12, color: Color(0xFF666666))),
+                          Text('$signalQuality (${device.rssi}dBm)',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: signalColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('🔋 Sensores', style: TextStyle(fontSize: 12, color: Color(0xFF666666))),
+                          Text('$activeSensors/5 activos',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                                  color: activeSensors > 0 ? const Color(0xFFDC3545) : const Color(0xFF28A745))),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 16),
 
             // Sensors
-            const Text('📊 ESTADO DE CERCOS:',
-                style: TextStyle(fontSize: 14, color: Color(0xFF666666), fontWeight: FontWeight.w600)),
-            const SizedBox(height: 10),
+            const Text('📊 CERCOS:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666))),
+            const SizedBox(height: 8),
             Row(
               children: List.generate(5, (i) {
-                final sName = 'c${i + 1}';
-                final active = sensors[sName] == true;
+                final active = sensors['c${i + 1}'] == true;
                 return Expanded(
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: active ? const Color(0xFFDC3545) : const Color(0xFF28A745),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       children: [
-                        Text('C${i + 1}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text(active ? '🔴' : '🟢', style: const TextStyle(fontSize: 16)),
+                        Text('C${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(active ? '🔴' : '🟢', style: const TextStyle(fontSize: 14)),
                       ],
                     ),
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 12),
 
-            // Info grid
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFF8F9FA), Color(0xFFE9ECEF)]),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('📶 Señal WiFi', style: TextStyle(color: Color(0xFF666666), fontSize: 13)),
-                        const SizedBox(height: 3),
-                        Text(signalQuality, style: TextStyle(fontWeight: FontWeight.bold, color: signalColor)),
-                        Text('${device.rssi} dBm', style: const TextStyle(fontSize: 11, color: Color(0xFF888888))),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('🔋 Sensores', style: TextStyle(color: Color(0xFF666666), fontSize: 13)),
-                        const SizedBox(height: 3),
-                        Text('$activeSensors/5 activos',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: activeSensors > 0 ? const Color(0xFFDC3545) : const Color(0xFF28A745))),
-                        Text(activeSensors > 0 ? '⚠️ Atención' : '✅ Normal',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF888888))),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            Divider(color: Colors.grey[200]),
+            // Footer
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('🕒 ${_formatTimestamp(device.lastSeen)}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
-                Text(device.ip, style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF888888))),
+                Text(device.ip, style: const TextStyle(fontSize: 11, color: Color(0xFF888888))),
               ],
             ),
           ],

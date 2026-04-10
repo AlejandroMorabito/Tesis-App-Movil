@@ -6,17 +6,11 @@ import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyDpjVvSG1YqWCPpi7MG3vIHA70pIeQI6yQ",
-      authDomain: "tesis-270d3.firebaseapp.com",
-      databaseURL: "https://tesis-270d3-default-rtdb.firebaseio.com",
-      projectId: "tesis-270d3",
-      storageBucket: "tesis-270d3.firebasestorage.app",
-      messagingSenderId: "771219459720",
-      appId: "1:771219459720:web:fe012e38d968fa0310993d",
-    ),
-  );
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    // Ya inicializado por google-services
+  }
   runApp(const SismoApp());
 }
 

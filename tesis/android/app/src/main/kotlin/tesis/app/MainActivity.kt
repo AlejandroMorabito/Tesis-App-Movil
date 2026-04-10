@@ -1,4 +1,4 @@
-package com.example.tesis
+package tesis.app
 
 import io.flutter.embedding.android.FlutterActivity
 

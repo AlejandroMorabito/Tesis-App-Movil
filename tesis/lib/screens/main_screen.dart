@@ -40,23 +40,15 @@ class _MainScreenState extends State<MainScreen> {
 
   void _showSection(String section) {
     if (section == 'admin' && !_dbService.isAdmin) {
-      _showSnackbar('🚫 No tienes permisos de administrador', Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🚫 No tienes permisos de administrador'), backgroundColor: Colors.red),
+      );
       return;
     }
     setState(() => _currentSection = section);
-    Navigator.of(context).pop(); // close drawer on mobile
-  }
-
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _logout() async {
@@ -82,12 +74,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _openProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ProfileScreen(dbService: _dbService),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(dbService: _dbService)));
   }
 
   Widget _buildCurrentSection() {
@@ -101,179 +88,153 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  Widget _buildSidebarContent() {
-    return Column(
-      children: [
-        const SizedBox(height: 20),
-        _SidebarButton(
-          icon: '📊',
-          label: 'Dashboard',
-          isActive: _currentSection == 'dashboard',
-          onTap: () => _showSection('dashboard'),
-        ),
-        _SidebarButton(
-          icon: '📈',
-          label: 'Valores en Vivo',
-          isActive: _currentSection == 'valores',
-          onTap: () => _showSection('valores'),
-        ),
-        if (_dbService.isAdmin)
-          _SidebarButton(
-            icon: '👑',
-            label: 'Administración',
-            isActive: _currentSection == 'admin',
-            onTap: () => _showSection('admin'),
-          ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = _dbService.userData?['displayName'] ?? user?.email?.split('@')[0] ?? 'Usuario';
-    final isWide = MediaQuery.of(context).size.width > 768;
+    final displayName = _dbService.userData?['displayName']?.toString().isNotEmpty == true
+        ? _dbService.userData!['displayName'].toString()
+        : user?.email?.split('@')[0] ?? 'Usuario';
 
     return Scaffold(
       key: _scaffoldKey,
-      // Top bar
+      backgroundColor: const Color(0xFFEEF2F6),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.1),
-        leading: isWide
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.menu, color: Color(0xFF333333)),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              ),
-        automaticallyImplyLeading: false,
+        iconTheme: const IconThemeData(color: Color(0xFF333333)),
+        titleSpacing: 0,
         title: GestureDetector(
           onTap: _openProfile,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFDEE2E6)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF667EEA).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      displayName.toString().isNotEmpty
-                          ? displayName.toString()[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
+          child: Row(
+            children: [
+              Container(
+                width: 30, height: 30,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      displayName.toString(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF333333),
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      user?.email ?? '',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF666666)),
-                    ),
-                  ],
+                child: Center(
+                  child: Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Color(0xFF667EEA), size: 18),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(displayName,
+                    style: const TextStyle(color: Color(0xFF333333), fontSize: 14, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
           ),
         ),
         actions: [
-          // Notification badge
-          if (_dbService.notifications.isNotEmpty)
-            IconButton(
-              icon: Badge(
-                label: Text('${_dbService.notifications.length}'),
-                child: const Icon(Icons.notifications_outlined, color: Color(0xFF333333)),
-              ),
-              onPressed: () => _showNotificationsSheet(),
+          IconButton(
+            icon: Badge(
+              isLabelVisible: _dbService.notifications.isNotEmpty,
+              label: Text('${_dbService.notifications.length}', style: const TextStyle(fontSize: 9)),
+              child: const Icon(Icons.notifications_outlined, size: 22),
             ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: _LogoutButton(onTap: _logout),
+            onPressed: _showNotificationsSheet,
           ),
-        ],
-      ),
-
-      // Drawer for mobile
-      drawer: isWide
-          ? null
-          : Drawer(
-              child: Container(
-                color: Colors.white,
-                child: _buildSidebarContent(),
-              ),
-            ),
-
-      body: Row(
-        children: [
-          // Fixed sidebar for wide screens
-          if (isWide)
-            Container(
-              width: 250,
+          GestureDetector(
+            onTap: _logout,
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 5,
-                    offset: const Offset(2, 0),
-                  ),
-                ],
+                gradient: const LinearGradient(colors: [Color(0xFFF093FB), Color(0xFFF5576C)]),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: _buildSidebarContent(),
+              child: const Text('Salir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
             ),
-          // Main content
-          Expanded(
-            child: _buildCurrentSection(),
           ),
         ],
       ),
+
+      // Bottom navigation for mobile
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentSection == 'dashboard' ? 0 : _currentSection == 'valores' ? 1 : 2,
+        onTap: (i) {
+          if (i == 0) _showSection('dashboard');
+          if (i == 1) _showSection('valores');
+          if (i == 2) {
+            if (_dbService.isAdmin) {
+              _showSection('admin');
+            } else {
+              _openProfile();
+            }
+          }
+        },
+        selectedItemColor: const Color(0xFF667EEA),
+        unselectedItemColor: Colors.grey,
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          const BottomNavigationBarItem(icon: Icon(Icons.sensors), label: 'En Vivo'),
+          if (_dbService.isAdmin)
+            const BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: 'Admin')
+          else
+            const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+        ],
+      ),
+
+      // Drawer
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 50, height: 50,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.9)),
+                      child: Center(
+                        child: Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                            style: const TextStyle(color: Color(0xFF667EEA), fontWeight: FontWeight.bold, fontSize: 22)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(displayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(user?.email ?? '', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text('Mi Perfil'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openProfile();
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _logout();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      body: _buildCurrentSection(),
     );
   }
 
   void _showNotificationsSheet() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(15))),
       builder: (_) => Container(
         padding: const EdgeInsets.all(20),
         constraints: const BoxConstraints(maxHeight: 400),
@@ -283,111 +244,29 @@ class _MainScreenState extends State<MainScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('🔔 Notificaciones',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('🔔 Notificaciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 TextButton(
-                  onPressed: () {
-                    _dbService.notifications.clear();
-                    _dbService.notifyListeners();
-                    Navigator.pop(context);
-                  },
+                  onPressed: () { _dbService.notifications.clear(); _dbService.notifyListeners(); Navigator.pop(context); },
                   child: const Text('Limpiar'),
                 ),
               ],
             ),
             const Divider(),
             Expanded(
-              child: ListView.builder(
-                itemCount: _dbService.notifications.length,
-                itemBuilder: (_, i) {
-                  final n = _dbService.notifications[i];
-                  return ListTile(
-                    dense: true,
-                    title: Text(n.message, style: const TextStyle(fontSize: 13)),
-                    subtitle: Text(
-                      '${n.time.hour}:${n.time.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+              child: _dbService.notifications.isEmpty
+                  ? const Center(child: Text('Sin notificaciones', style: TextStyle(color: Colors.grey)))
+                  : ListView.builder(
+                      itemCount: _dbService.notifications.length,
+                      itemBuilder: (_, i) {
+                        final n = _dbService.notifications[i];
+                        return ListTile(
+                          dense: true,
+                          title: Text(n.message, style: const TextStyle(fontSize: 13)),
+                          subtitle: Text('${n.time.hour}:${n.time.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SidebarButton extends StatelessWidget {
-  final String icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _SidebarButton({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-      child: Material(
-        color: isActive ? const Color(0xFF007BFF) : Colors.transparent,
-        borderRadius: BorderRadius.circular(5),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(5),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-            child: Row(
-              children: [
-                Text(icon, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 10),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isActive ? Colors.white : const Color(0xFF333333),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LogoutButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _LogoutButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFF093FB), Color(0xFFF5576C)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('🚪', style: TextStyle(fontSize: 14)),
-            SizedBox(width: 5),
-            Text(
-              'Cerrar Sesión',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ],
         ),

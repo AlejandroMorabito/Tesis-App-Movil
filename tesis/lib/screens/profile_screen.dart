@@ -30,10 +30,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    _userData = await widget.dbService.getUserData(uid);
-    _nameController.text = _userData?['displayName'] ?? '';
-    _phoneController.text = _userData?['phone'] ?? '';
+    try {
+      _userData = widget.dbService.userData;
+      if (_userData == null) {
+        final uid = FirebaseAuth.instance.currentUser!.uid;
+        _userData = await widget.dbService.getUserData(uid);
+      }
+      _nameController.text = _userData?['displayName'] ?? '';
+      _phoneController.text = _userData?['phone'] ?? '';
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -97,11 +104,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final user = FirebaseAuth.instance.currentUser!;
     final displayName = _userData?['displayName']?.toString().isNotEmpty == true
-        ? _userData!['displayName'] : user.email!.split('@')[0];
+        ? _userData!['displayName'].toString() : user.email!.split('@')[0];
     final initial = displayName.toString()[0].toUpperCase();
-    final role = _userData?['role'] ?? 'user';
-    final phone = _userData?['phone'] ?? 'No registrado';
-    final status = _userData?['status'] ?? 'active';
+    final role = _userData?['role']?.toString() ?? 'user';
+    final phone = _userData?['phone']?.toString() ?? 'No registrado';
+    final status = _userData?['status']?.toString() ?? 'active';
     final chips = (_userData?['chips'] as Map?) ?? {};
     final chipsWithAccess = chips.values.where((v) => v == true).length;
 
