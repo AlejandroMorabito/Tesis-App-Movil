@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
+import '../services/sismo_feedback.dart';
+import '../services/sismo_theme.dart';
 
 class ControlModal extends StatefulWidget {
   final String chipId;
   final DatabaseService dbService;
-
   const ControlModal({super.key, required this.chipId, required this.dbService});
 
   @override
@@ -13,366 +14,198 @@ class ControlModal extends StatefulWidget {
 
 class _ControlModalState extends State<ControlModal> {
   @override
-  void initState() {
-    super.initState();
-    widget.dbService.addListener(_refresh);
-  }
-
+  void initState() { super.initState(); widget.dbService.addListener(_refresh); }
   @override
-  void dispose() {
-    widget.dbService.removeListener(_refresh);
-    super.dispose();
-  }
+  void dispose() { widget.dbService.removeListener(_refresh); super.dispose(); }
+  void _refresh() { if (mounted) setState(() {}); }
 
-  void _refresh() {
-    if (mounted) setState(() {});
+  // Muestra "procesando..." arriba, ejecuta la acción y confirma el resultado.
+  Future<void> _sendCmd(String label, Future<void> Function() action) async {
+    SismoFeedback.show(context, '⏳ $label...', color: SismoColors.blue);
+    try {
+      await action();
+      if (mounted) SismoFeedback.show(context, '✅ $label', color: SismoColors.green);
+    } catch (_) {
+      if (mounted) SismoFeedback.show(context, '❌ Error: $label', color: SismoColors.red);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.sismo;
     final chipId = widget.chipId;
     final device = widget.dbService.devicesState[chipId];
     final sensors = widget.dbService.sensorStates[chipId] ?? {};
 
     if (device == null) {
       return Container(
+        decoration: BoxDecoration(color: s.bgCard, borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
         padding: const EdgeInsets.all(40),
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('❌', style: TextStyle(fontSize: 36)),
-            SizedBox(height: 15),
-            Text('Dispositivo no encontrado', style: TextStyle(fontSize: 16)),
-          ],
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('❌', style: TextStyle(fontSize: 36)),
+          const SizedBox(height: 12),
+          Text('Dispositivo no encontrado', style: TextStyle(fontSize: 16, color: s.textPrimary)),
+        ]),
       );
     }
 
     final deviceName = device.name.isNotEmpty ? device.name : chipId;
+    Color statusColor; String statusText, statusIcon;
+    if (device.alarm) { statusColor = SismoColors.red; statusText = 'ALARMA ACTIVA'; statusIcon = '🚨'; }
+    else if (device.intrusion) { statusColor = SismoColors.amber; statusText = 'INTRUSIÓN'; statusIcon = '⚠️'; }
+    else if (device.armed) { statusColor = SismoColors.green; statusText = 'ARMADO'; statusIcon = '🛡️'; }
+    else { statusColor = SismoColors.grayAccent; statusText = 'DESARMADO'; statusIcon = '🔓'; }
 
-    // Status
-    Color statusColor;
-    String statusText, statusIcon;
-    Color statusBg;
-
-    if (device.alarm) {
-      statusColor = const Color(0xFFDC3545);
-      statusText = 'ALARMA ACTIVA'; statusIcon = '🚨'; statusBg = const Color(0xFFFFF5F5);
-    } else if (device.intrusion) {
-      statusColor = const Color(0xFFFF9500);
-      statusText = 'INTRUSIÓN'; statusIcon = '⚠️'; statusBg = const Color(0xFFFFFAF0);
-    } else if (device.armed) {
-      statusColor = const Color(0xFF28A745);
-      statusText = 'ARMADO'; statusIcon = '🛡️'; statusBg = const Color(0xFFF0FFF4);
-    } else {
-      statusColor = const Color(0xFF6C757D);
-      statusText = 'DESARMADO'; statusIcon = '🔓'; statusBg = const Color(0xFFF8F9FA);
-    }
-
-    int activeSensors = 0;
-    for (var i = 1; i <= 5; i++) {
-      if (sensors['c$i'] == true) activeSensors++;
-    }
-
-    String signalQuality; Color signalColor;
-    if (device.rssi >= -50) {
-      signalQuality = 'Excelente'; signalColor = const Color(0xFF28A745);
-    } else if (device.rssi >= -65) {
-      signalQuality = 'Buena'; signalColor = const Color(0xFF4CD964);
-    } else if (device.rssi >= -75) {
-      signalQuality = 'Regular'; signalColor = const Color(0xFFFFC107);
-    } else {
-      signalQuality = 'Débil'; signalColor = const Color(0xFFDC3545);
-    }
-
+    int activos = 0;
+    for (var i = 1; i <= 5; i++) { if (sensors['c$i'] == true) activos++; }
+    String signalQ; Color signalC;
+    if (device.rssi >= -50) { signalQ = 'Excelente'; signalC = SismoColors.green; }
+    else if (device.rssi >= -65) { signalQ = 'Buena'; signalC = SismoColors.green; }
+    else if (device.rssi >= -75) { signalQ = 'Regular'; signalC = SismoColors.amber; }
+    else { signalQ = 'Débil'; signalC = SismoColors.red; }
     final connected = (DateTime.now().millisecondsSinceEpoch - device.lastSeen) < 300000;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) {
-        return SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
+      initialChildSize: 0.85, minChildSize: 0.5, maxChildSize: 0.95, expand: false,
+      builder: (_, sc) => Container(
+        decoration: BoxDecoration(color: s.bgCard, borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+        child: SingleChildScrollView(
+          controller: sc, padding: const EdgeInsets.all(20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: s.borderColor, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Control de Dispositivo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: s.textPrimary)),
+              IconButton(icon: Icon(Icons.close, color: s.textMuted), onPressed: () => Navigator.pop(context)),
+            ]),
+            const SizedBox(height: 16),
+
+            // Status card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: s.bgInset, borderRadius: BorderRadius.circular(14), border: Border.all(color: s.borderColor)),
+              child: Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(deviceName, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: s.textPrimary)),
+                    Text('ID: $chipId', style: TextStyle(fontSize: 11, color: s.textMuted, fontFamily: 'monospace')),
+                  ]),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Text('$statusIcon $statusText', style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w500)),
+                  ),
+                ]),
+                const SizedBox(height: 16),
+                Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.5)]), boxShadow: [BoxShadow(color: statusColor.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))]),
+                  child: Center(child: Text(statusIcon, style: const TextStyle(fontSize: 30))),
+                ),
+                const SizedBox(height: 16),
+                Row(children: [
+                  _QuickStat(s, 'SEÑAL WIFI', signalQ, '${device.rssi} dBm', signalC),
+                  const SizedBox(width: 10),
+                  _QuickStat(s, 'SENSORES', '$activos/5', activos > 0 ? 'Activos' : 'Normales', activos > 0 ? SismoColors.red : SismoColors.green),
+                ]),
+              ]),
+            ),
+            const SizedBox(height: 20),
+
+            Text('CONTROL DE CERCOS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: s.textPrimary)),
+            const SizedBox(height: 12),
+            Row(children: List.generate(5, (i) {
+              final sName = 'c${i + 1}'; final active = sensors[sName] == true;
+              return Expanded(child: GestureDetector(
+                onTap: () => _sendCmd(
+                  active ? 'Desactivando ${sName.toUpperCase()}' : 'Activando ${sName.toUpperCase()}',
+                  () => widget.dbService.toggleSensor(chipId, sName),
+                ),
                 child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(color: active ? SismoColors.red : SismoColors.green, borderRadius: BorderRadius.circular(8)),
+                  child: Column(children: [
+                    Text('C${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text(active ? '🔴' : '🟢', style: const TextStyle(fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(active ? 'ACTIVO' : 'NORMAL', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 10)),
+                  ]),
                 ),
-              ),
-              const SizedBox(height: 15),
+              ));
+            })),
+            const SizedBox(height: 20),
 
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('🎛️ Control de Dispositivo',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+            // Action buttons
+            Row(children: [
+              Expanded(child: _ActionBtn(device.alarm ? 'DESACTIVAR ALARMA' : 'ACTIVAR ALARMA', device.alarm ? SismoColors.red : SismoColors.green, () => _sendCmd(device.alarm ? 'Desactivando alarma' : 'Activando alarma', () => widget.dbService.sendCommand(chipId, device.alarm ? 'DESACTIVAR_ALARMA' : 'ACTIVAR_ALARMA')))),
+              const SizedBox(width: 10),
+              Expanded(child: _ActionBtn(device.armed ? 'DESARMAR' : 'ARMAR', device.armed ? SismoColors.green : SismoColors.grayAccent, () => _sendCmd(device.armed ? 'Desarmando sistema' : 'Armando sistema', () => widget.dbService.sendCommand(chipId, device.armed ? 'DESARMAR_SISTEMA' : 'ARMAR_SISTEMA')))),
+            ]),
+            const SizedBox(height: 16),
 
-              // Device status card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(deviceName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                            Text('ID: $chipId', style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text('$statusIcon $statusText',
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+            // Device info
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: s.bgInset, borderRadius: BorderRadius.circular(10), border: Border.all(color: s.borderColor)),
+              child: Column(children: [
+                _InfoRow(s, 'ÚLTIMA CONEXIÓN', _formatTs(device.lastSeen)),
+                Divider(color: s.borderColor, height: 16),
+                _InfoRow(s, 'DIRECCIÓN IP', device.ip),
+                Divider(color: s.borderColor, height: 16),
+                _InfoRow(s, 'DIRECCIÓN MAC', device.mac, mono: true),
+                Divider(color: s.borderColor, height: 16),
+                _InfoRow(s, 'ESTADO', connected ? 'CONECTADO' : 'DESCONECTADO', valueColor: connected ? SismoColors.green : SismoColors.red),
+              ]),
+            ),
+            const SizedBox(height: 14),
 
-                    // Status circle
-                    Container(
-                      width: 80, height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.5)]),
-                        boxShadow: [BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 6))],
-                      ),
-                      child: Center(child: Text(statusIcon, style: const TextStyle(fontSize: 32))),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Quick stats
-                    Row(
-                      children: [
-                        _QuickStat('📶 SEÑAL WIFI', signalQuality, '${device.rssi} dBm', signalColor),
-                        const SizedBox(width: 15),
-                        _QuickStat('🔋 SENSORES', '$activeSensors/5',
-                            activeSensors > 0 ? 'Activos' : 'Normales',
-                            activeSensors > 0 ? const Color(0xFFDC3545) : const Color(0xFF28A745)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 25),
-
-              // Control de cercos
-              const Row(
-                children: [
-                  Text('📡', style: TextStyle(fontSize: 16)),
-                  SizedBox(width: 10),
-                  Text('CONTROL DE CERCOS',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF333333))),
-                ],
-              ),
-              const SizedBox(height: 15),
-
-              Row(
-                children: List.generate(5, (i) {
-                  final sName = 'c${i + 1}';
-                  final active = sensors[sName] == true;
-                  final cercoColor = active ? const Color(0xFFDC3545) : const Color(0xFF28A745);
-
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => widget.dbService.toggleSensor(chipId, sName),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 5),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        decoration: BoxDecoration(
-                          color: cercoColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          children: [
-                            Text('C${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                            const SizedBox(height: 5),
-                            Text(active ? '🔴' : '🟢', style: const TextStyle(fontSize: 20)),
-                            const SizedBox(height: 5),
-                            Text(active ? 'ACTIVO' : 'NORMAL',
-                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 11)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 25),
-
-              // Alarm / Arm buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => widget.dbService.sendCommand(
-                          chipId, device.alarm ? 'DESACTIVAR_ALARMA' : 'ACTIVAR_ALARMA'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: device.alarm ? const Color(0xFFDC3545) : const Color(0xFF28A745),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(
-                        '🚨 ${device.alarm ? "DESACTIVAR ALARMA" : "ACTIVAR ALARMA"}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => widget.dbService.sendCommand(
-                          chipId, device.armed ? 'DESARMAR_SISTEMA' : 'ARMAR_SISTEMA'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: device.armed ? const Color(0xFF28A745) : const Color(0xFF6C757D),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(
-                        device.armed ? '🔒 DESARMAR' : '🔓 ARMAR',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Device info
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    _InfoRow('🕒 ÚLTIMA CONEXIÓN', _formatTimestamp(device.lastSeen)),
-                    const Divider(),
-                    _InfoRow('📍 DIRECCIÓN IP', device.ip),
-                    const Divider(),
-                    _InfoRow('📡 DIRECCIÓN MAC', device.mac),
-                    const Divider(),
-                    _InfoRow('🔌 ESTADO', connected ? 'CONECTADO' : 'DESCONECTADO',
-                        valueColor: connected ? const Color(0xFF28A745) : const Color(0xFFDC3545)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              // Tip
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4FD),
-                  borderRadius: BorderRadius.circular(8),
-                  border: const Border(left: BorderSide(color: Color(0xFF3498DB), width: 4)),
-                ),
-                child: const Row(
-                  children: [
-                    Text('💡', style: TextStyle(fontSize: 14)),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text('Haz clic en cualquier cerco para cambiar su estado. Los cambios se aplicarán inmediatamente.',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF2C3E50))),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: SismoColors.blue.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border(left: BorderSide(color: SismoColors.blue, width: 3))),
+              child: Text('Haz clic en cualquier cerco para cambiar su estado.', style: TextStyle(fontSize: 12, color: s.textSecondary)),
+            ),
+            const SizedBox(height: 20),
+          ]),
+        ),
+      ),
     );
   }
 
-  String _formatTimestamp(int ms) {
+  Widget _QuickStat(SismoThemeExtension s, String label, String value, String sub, Color color) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: s.bgCard, borderRadius: BorderRadius.circular(10), border: Border.all(color: s.borderColor)),
+      child: Column(children: [
+        Text(label, style: TextStyle(fontSize: 10, color: s.textMuted)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: color)),
+        Text(sub, style: TextStyle(fontSize: 10, color: s.textFaint)),
+      ]),
+    ));
+  }
+
+  Widget _ActionBtn(String label, Color color, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(backgroundColor: color, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+      child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12), textAlign: TextAlign.center),
+    );
+  }
+
+  Widget _InfoRow(SismoThemeExtension s, String label, String value, {Color? valueColor, bool mono = false}) {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(label, style: TextStyle(fontSize: 11, color: s.textMuted)),
+      Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: valueColor ?? s.textPrimary, fontFamily: mono ? 'monospace' : null)),
+    ]);
+  }
+
+  String _formatTs(int ms) {
     if (ms == 0) return 'N/A';
-    final date = DateTime.fromMillisecondsSinceEpoch(ms);
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-  }
-}
-
-class _QuickStat extends StatelessWidget {
-  final String label, value, subtitle;
-  final Color color;
-  const _QuickStat(this.label, this.value, this.subtitle, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 3))],
-        ),
-        child: Column(
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
-            const SizedBox(height: 5),
-            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-            Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF888888))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label, value;
-  final Color? valueColor;
-  const _InfoRow(this.label, this.value, {this.valueColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
-          Text(value,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: valueColor ?? const Color(0xFF333333),
-                fontFamily: label.contains('MAC') ? 'monospace' : null,
-              )),
-        ],
-      ),
-    );
+    final diff = DateTime.now().millisecondsSinceEpoch - ms;
+    if (diff < 60000) return 'Hace ${(diff / 1000).floor()}s';
+    if (diff < 3600000) return 'Hace ${(diff / 60000).floor()}m';
+    if (diff < 86400000) return 'Hace ${(diff / 3600000).floor()}h';
+    return 'Hace ${(diff / 86400000).floor()}d';
   }
 }

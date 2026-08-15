@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -186,6 +187,9 @@ class DatabaseService extends ChangeNotifier {
     currentData.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     notifyListeners();
   }
+
+  /// Recargar el historial de eventos (para pull-to-refresh).
+  Future<void> refreshEvents() => _loadAlarmData();
 
   void _startListeners() {
     // Listener de permisos
@@ -415,8 +419,138 @@ class DatabaseService extends ChangeNotifier {
     await _db.child('config').update({'webhookUrl': url});
   }
 
+  // ==================== GESTIÓN DE NODOS (SOLO ADMIN) ====================
+
+  /// Carga TODOS los dispositivos con su configuración (nombre, enabled, zonas).
+  Future<List<Map<String, dynamic>>> loadNodes() async {
+    final snap = await _db.child('devices').get();
+    final nodes = <Map<String, dynamic>>[];
+    if (!snap.exists) return nodes;
+
+    final devices = snap.value as Map;
+    for (var entry in devices.entries) {
+      final chipId = entry.key.toString();
+      final data = Map<String, dynamic>.from(entry.value as Map);
+      nodes.add({
+        'chipId': chipId,
+        'name': (data['name'] ?? chipId).toString(),
+        'enabled': data['enabled'] != false,
+        'zones': (data['zones'] as Map?) ?? {},
+        'rssi': (data['rssi'] as int?) ?? -90,
+        'ip': (data['ip_address'] ?? 'N/A').toString(),
+        'lastSeen': (data['last_seen'] as int?) ?? 0,
+      });
+    }
+    nodes.sort((a, b) => a['chipId'].toString().compareTo(b['chipId'].toString()));
+    return nodes;
+  }
+
+  /// Guarda la configuración de un nodo (update parcial, no reemplaza el nodo).
+  Future<void> saveNodeConfig(
+    String chipId, {
+    required String name,
+    required bool enabled,
+    required Map<String, dynamic> zones,
+  }) async {
+    await _db.child('devices/$chipId').update({
+      'name': name,
+      'enabled': enabled,
+      'zones': zones,
+    });
+  }
+
   Future<void> updateUser(String uid, Map<String, dynamic> updates) async {
     await _db.child('users/$uid').update(updates);
+  }
+
+  /// Crea un usuario nuevo (Auth + registro en BD) SIN cerrar la sesión del
+  /// admin. Con el plan gratuito de Firebase no hay Cloud Functions, así que se
+  /// usa una app secundaria para registrar la cuenta en paralelo.
+  /// Devuelve 'created' si creó la cuenta, o 'reactivated' si el email
+  /// correspondía a una cuenta bloqueada por eliminación y se reactivó.
+  Future<String> createUser({
+    required String email,
+    required String password,
+    String displayName = '',
+    String phone = '',
+    String role = 'user',
+    String status = 'active',
+    Map<String, bool> chips = const {},
+  }) async {
+    // Obtener (o inicializar) la app secundaria de Firebase
+    FirebaseApp secondaryApp;
+    try {
+      secondaryApp = Firebase.app('userCreator');
+    } catch (_) {
+      secondaryApp = await Firebase.initializeApp(
+        name: 'userCreator',
+        options: Firebase.app().options,
+      );
+    }
+    final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+    try {
+      // 1) Crear la cuenta en la app secundaria (el admin sigue conectado)
+      final cred = await secondaryAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final newUid = cred.user!.uid;
+
+      if (displayName.isNotEmpty) {
+        try {
+          await cred.user!.updateDisplayName(displayName);
+        } catch (_) {}
+      }
+
+      // 2) Escribir el registro con la sesión del admin (misma estructura que el auto-registro)
+      final now = DateTime.now().toIso8601String();
+      await _db.child('users/$newUid').set({
+        'email': email,
+        'displayName': displayName,
+        'phone': phone,
+        'createdAt': now,
+        'loginCount': 0,
+        'role': role,
+        'status': status,
+        'provider': 'email/password',
+        'chips': chips,
+        'createdBy': _auth.currentUser?.email ?? 'admin',
+      });
+      return 'created';
+    } on FirebaseAuthException catch (e) {
+      // Si el email ya existe por una cuenta bloqueada por eliminación, reactivarla
+      if (e.code == 'email-already-in-use') {
+        final usersSnap = await _db.child('users').get();
+        if (usersSnap.exists) {
+          final all = Map<String, dynamic>.from(usersSnap.value as Map);
+          for (final entry in all.entries) {
+            final u = Map<String, dynamic>.from(entry.value as Map);
+            final sameEmail =
+                (u['email'] ?? '').toString().toLowerCase() == email.toLowerCase();
+            final blocked = u['deleted'] == true || u['status'] == 'deleted';
+            if (sameEmail && blocked) {
+              await _db.child('users/${entry.key}').update({
+                'deleted': false,
+                'status': status,
+                'role': role,
+                'displayName':
+                    displayName.isNotEmpty ? displayName : (u['displayName'] ?? ''),
+                'phone': phone.isNotEmpty ? phone : (u['phone'] ?? ''),
+                'chips': chips,
+                'reactivatedAt': DateTime.now().toIso8601String(),
+                'reactivatedBy': _auth.currentUser?.email ?? 'admin',
+              });
+              return 'reactivated';
+            }
+          }
+        }
+      }
+      rethrow;
+    } finally {
+      // 3) Cerrar la sesión de la app secundaria
+      await secondaryAuth.signOut();
+    }
   }
 
   Future<Map<String, dynamic>?> getUserData(String uid) async {

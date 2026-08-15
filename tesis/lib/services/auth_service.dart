@@ -2,6 +2,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class AuthService {
+  /// Mensaje pendiente para mostrar en el login tras un bloqueo (cuenta borrada).
+  static String? pendingLoginError;
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _db = FirebaseDatabase.instance.ref();
 
@@ -22,6 +25,15 @@ class AuthService {
 
     if (snapshot.exists) {
       final data = snapshot.value as Map;
+      // Bloqueo especial: cuenta marcada como borrada
+      if (data['deleted'] == true || data['status'] == 'deleted') {
+        pendingLoginError = 'Cuenta borrada. Contacta al administrador.';
+        await _auth.signOut();
+        throw FirebaseAuthException(
+          code: 'user-deleted',
+          message: 'Cuenta borrada',
+        );
+      }
       await userRef.update({
         'lastLogin': now,
         'loginCount': ((data['loginCount'] as int?) ?? 0) + 1,
