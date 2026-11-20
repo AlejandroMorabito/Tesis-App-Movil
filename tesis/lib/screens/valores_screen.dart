@@ -60,12 +60,22 @@ class _DeviceCard extends StatelessWidget {
 
     Color statusColor; String statusText, statusDesc; IconData statusIcon;
     final hasActive = List.generate(5, (i) => sensors['c${i + 1}'] == true).any((v) => v);
-    final hasAlarm = sensors['alarma'] == true || device.alarm;
+    final hasAlarm = device.alarm;
 
     if (hasAlarm) { statusColor = SismoColors.red; statusIcon = Icons.notifications_active; statusText = 'ALARMA'; statusDesc = 'Atención inmediata'; }
-    else if (hasActive) { statusColor = SismoColors.amber; statusIcon = Icons.warning_amber_rounded; statusText = 'INTRUSIÓN'; statusDesc = 'Intrusión detectada'; }
-    else if (sensors['armado'] == true || device.armed) { statusColor = SismoColors.green; statusIcon = Icons.shield; statusText = 'ARMADO'; statusDesc = 'Sistema vigilando'; }
+    else if (device.intrusion || hasActive) { statusColor = SismoColors.amber; statusIcon = Icons.warning_amber_rounded; statusText = 'INTRUSIÓN'; statusDesc = 'Intrusión detectada'; }
+    else if (device.armed) { statusColor = SismoColors.green; statusIcon = Icons.shield; statusText = 'ARMADO'; statusDesc = 'Sistema vigilando'; }
     else { statusColor = SismoColors.grayAccent; statusIcon = Icons.lock_open; statusText = 'DESARMADO'; statusDesc = 'Sistema inactivo'; }
+
+    // Un nodo sin conexión no reporta nada: su último estado quedó congelado
+    // (con INPUT_PULLUP las entradas al aire se leen como intrusión). No hay
+    // que mostrarlo como si estuviera pasando ahora.
+    if (!device.isConnected) {
+      statusDesc = 'Sin conexión · último estado: $statusText';
+      statusText = 'SIN CONEXIÓN';
+      statusColor = SismoColors.grayAccent;
+      statusIcon = Icons.wifi_off;
+    }
 
     String signalQ; Color signalC;
     if (device.rssi >= -50) { signalQ = 'Excelente'; signalC = SismoColors.green; }

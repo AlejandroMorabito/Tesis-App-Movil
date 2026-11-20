@@ -6,13 +6,21 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-/// El ESP32 escribe `last_seen` en SEGUNDOS (Unix epoch), pero
-/// DateTime.now().millisecondsSinceEpoch está en milisegundos. Sin normalizar,
-/// la resta siempre da un número enorme y todo aparece "Desconectado".
+/// El firmware calcula `last_seen` como epoch en milisegundos dentro de un
+/// unsigned long de 32 bits, así que el valor llega DESBORDADO: es la hora real
+/// módulo 2^32 (un ciclo de ~49,7 días). Se reconstruye la hora real como el
+/// instante más reciente (<= ahora) que coincide con ese valor.
+/// Devuelve 0 si no hay dato.
 int toMillis(dynamic ts) {
   final n = ts is int ? ts : int.tryParse('${ts ?? ''}') ?? 0;
   if (n <= 0) return 0;
-  return n > 1000000000000 ? n : n * 1000;
+  if (n > 1000000000000) return n; // ya es un epoch en ms válido
+  const wrap = 4294967296; // 2^32
+  final now = DateTime.now().millisecondsSinceEpoch;
+  var age = (now - n) % wrap; // en Dart, % nunca da negativo
+  // Reloj del nodo ligeramente adelantado al del teléfono: tratar como "ahora"
+  if (age > wrap - 120000) age = 0;
+  return now - age;
 }
 
 class DeviceState {

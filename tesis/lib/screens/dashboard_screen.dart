@@ -159,7 +159,7 @@ class DashboardScreen extends StatelessWidget {
 
     String estado; Color estadoColor; String statusClass;
     if (device.alarm) { estado = 'Alarma'; estadoColor = SismoColors.red; statusClass = 'alarm'; }
-    else if (device.intrusion) { estado = 'Intrusión'; estadoColor = SismoColors.amber; statusClass = 'intrusion'; }
+    else if (device.intrusion || List.generate(5, (i) => sensors['c${i + 1}'] == true).any((v) => v)) { estado = 'Intrusión'; estadoColor = SismoColors.amber; statusClass = 'intrusion'; }
     else if (device.armed) { estado = 'Armado'; estadoColor = SismoColors.green; statusClass = 'armed'; }
     else { estado = 'Desarmado'; estadoColor = SismoColors.grayAccent; statusClass = 'disarmed'; }
 

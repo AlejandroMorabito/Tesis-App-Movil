@@ -52,7 +52,7 @@ class _ControlModalState extends State<ControlModal> {
     final deviceName = device.name.isNotEmpty ? device.name : chipId;
     Color statusColor; String statusText; IconData statusIcon;
     if (device.alarm) { statusColor = SismoColors.red; statusText = 'ALARMA ACTIVA'; statusIcon = Icons.notifications_active; }
-    else if (device.intrusion) { statusColor = SismoColors.amber; statusText = 'INTRUSIÓN'; statusIcon = Icons.warning_amber_rounded; }
+    else if (device.intrusion || List.generate(5, (i) => sensors['c${i + 1}'] == true).any((v) => v)) { statusColor = SismoColors.amber; statusText = 'INTRUSIÓN'; statusIcon = Icons.warning_amber_rounded; }
     else if (device.armed) { statusColor = SismoColors.green; statusText = 'ARMADO'; statusIcon = Icons.shield; }
     else { statusColor = SismoColors.grayAccent; statusText = 'DESARMADO'; statusIcon = Icons.lock_open; }
 
