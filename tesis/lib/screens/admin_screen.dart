@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../services/sismo_feedback.dart';
+import '../services/sismo_theme.dart';
 
 class AdminScreen extends StatefulWidget {
   final DatabaseService dbService;
@@ -39,16 +40,16 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _saveWebhook() async {
-    SismoFeedback.show(context, '⏳ Guardando webhook...', color: const Color(0xFF0EA5E9));
+    SismoFeedback.show(context, 'Guardando webhook...', color: const Color(0xFF0EA5E9), icon: Icons.sync);
     try {
       await widget.dbService.saveWebhookUrl(_webhookController.text.trim());
-      if (mounted) SismoFeedback.show(context, '✅ Webhook guardado', color: const Color(0xFF28A745));
-      setState(() => _webhookMsg = '✅ Webhook guardado correctamente');
+      if (mounted) SismoFeedback.show(context, 'Webhook guardado', color: const Color(0xFF28A745), icon: Icons.check_circle);
+      setState(() => _webhookMsg = 'Webhook guardado correctamente');
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _webhookMsg = null);
       });
     } catch (e) {
-      setState(() => _webhookMsg = '❌ Error al guardar: $e');
+      setState(() => _webhookMsg = 'Error al guardar: $e');
     }
   }
 
@@ -67,6 +68,7 @@ class _AdminScreenState extends State<AdminScreen> {
       );
     }
 
+    final s = context.sismo;
     final allUsers = (_adminData?['users'] as List<Map<String, dynamic>>?) ?? [];
     final allChipIds = (_adminData?['allChipIds'] as List<String>?) ?? [];
     // Ocultar cuentas eliminadas/bloqueadas
@@ -91,8 +93,14 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('👑 Panel de Administración',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+          Row(
+            children: [
+              Icon(Icons.admin_panel_settings, color: s.textPrimary, size: 26),
+              const SizedBox(width: 8),
+              Text('Panel de Administración',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: s.textPrimary)),
+            ],
+          ),
           const SizedBox(height: 20),
 
           // Stats
@@ -100,11 +108,11 @@ class _AdminScreenState extends State<AdminScreen> {
             spacing: 15,
             runSpacing: 15,
             children: [
-              _StatCard('👥 Usuarios', '$totalUsers', '$activeUsers activos', const Color(0xFF667EEA)),
-              _StatCard('👑 Admins', '$adminUsers',
+              _StatCard(Icons.people, 'Usuarios', '$totalUsers', '$activeUsers activos', const Color(0xFF667EEA)),
+              _StatCard(Icons.verified_user, 'Admins', '$adminUsers',
                   '${totalUsers > 0 ? (adminUsers / totalUsers * 100).round() : 0}%', const Color(0xFF667EEA)),
-              _StatCard('📱 Dispositivos', '$totalDevices', 'Disponibles', const Color(0xFFFFC107)),
-              _StatCard('🔐 Permisos', '${allChipIds.length}', 'Chips totales', const Color(0xFF6C757D)),
+              _StatCard(Icons.router, 'Dispositivos', '$totalDevices', 'Disponibles', const Color(0xFFFFC107)),
+              _StatCard(Icons.lock, 'Permisos', '${allChipIds.length}', 'Chips totales', const Color(0xFF6C757D)),
             ],
           ),
           const SizedBox(height: 20),
@@ -122,7 +130,7 @@ class _AdminScreenState extends State<AdminScreen> {
               children: [
                 const Row(
                   children: [
-                    Text('🔔', style: TextStyle(fontSize: 24)),
+                    Icon(Icons.notifications_active, size: 24, color: Color(0xFFFFC107)),
                     SizedBox(width: 10),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,8 +180,12 @@ class _AdminScreenState extends State<AdminScreen> {
                         ),
                         child: const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          child: Text('💾 Guardar',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.save, color: Colors.white, size: 16),
+                            SizedBox(width: 6),
+                            Text('Guardar',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                          ]),
                         ),
                       ),
                     ),
@@ -183,7 +195,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   const SizedBox(height: 10),
                   Text(_webhookMsg!, style: TextStyle(
                     fontSize: 13,
-                    color: _webhookMsg!.startsWith('✅') ? const Color(0xFF28A745) : const Color(0xFFDC3545),
+                    color: _webhookMsg!.startsWith('Error') ? const Color(0xFFDC3545) : const Color(0xFF28A745),
                   )),
                 ],
                 const SizedBox(height: 10),
@@ -196,23 +208,29 @@ class _AdminScreenState extends State<AdminScreen> {
 
           // Search
           TextField(
+            style: TextStyle(color: s.textPrimary),
             onChanged: (v) => setState(() => _searchQuery = v),
             decoration: InputDecoration(
               hintText: 'Buscar usuarios por email o nombre...',
-              prefixIcon: const Padding(
-                padding: EdgeInsets.only(left: 15, right: 10),
-                child: Text('🔍', style: TextStyle(fontSize: 18)),
+              hintStyle: TextStyle(color: s.textMuted, fontSize: 14),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 15, right: 10),
+                child: Icon(Icons.search, size: 20, color: s.textMuted),
               ),
               prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: s.bgInset,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25),
-                borderSide: const BorderSide(color: Color(0xFFE0E0E0), width: 2),
+                borderSide: BorderSide(color: s.borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(25),
+                borderSide: BorderSide(color: s.borderColor),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25),
-                borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+                borderSide: const BorderSide(color: SismoColors.teal, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             ),
@@ -239,17 +257,18 @@ class _AdminScreenState extends State<AdminScreen> {
           // Users table
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+              color: s.bgCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: s.borderColor),
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 // Header
                 Container(
-                  padding: const EdgeInsets.all(15),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
+                    gradient: LinearGradient(colors: [SismoColors.teal, SismoColors.blue]),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(10),
                       topRight: Radius.circular(10),
@@ -257,11 +276,11 @@ class _AdminScreenState extends State<AdminScreen> {
                   ),
                   child: const Row(
                     children: [
-                      Expanded(flex: 3, child: Text('Usuario', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14))),
-                      Expanded(flex: 1, child: Text('Rol', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14))),
-                      Expanded(flex: 1, child: Text('Estado', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14))),
-                      Expanded(flex: 1, child: Text('Chips', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14))),
-                      SizedBox(width: 70),
+                      Expanded(child: Text('Usuario', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13))),
+                      SizedBox(width: 38, child: Text('Rol', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11))),
+                      SizedBox(width: 46, child: Text('Estado', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11))),
+                      SizedBox(width: 44, child: Text('Chips', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11))),
+                      SizedBox(width: 40),
                     ],
                   ),
                 ),
@@ -280,19 +299,24 @@ class _AdminScreenState extends State<AdminScreen> {
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
+              color: s.bgInset,
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: s.borderColor),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('💡 Notas:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF666666))),
-                SizedBox(height: 5),
+                Row(children: [
+                  Icon(Icons.lightbulb_outline, size: 14, color: s.textSecondary),
+                  const SizedBox(width: 6),
+                  Text('Notas:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: s.textSecondary)),
+                ]),
+                const SizedBox(height: 5),
                 Text(
                   '1. Solo usuarios admin pueden ver esta sección\n'
                   '2. Los chips se sincronizan automáticamente\n'
                   '3. Los permisos se asignan por dispositivo individual',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+                  style: TextStyle(fontSize: 12, color: s.textMuted),
                 ),
               ],
             ),
@@ -303,6 +327,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildUserRow(Map<String, dynamic> user, List<String> allChipIds) {
+    final s = context.sismo;
     final chips = (user['chips'] as Map?) ?? {};
     final chipsWithAccess = chips.values.where((v) => v == true).length;
     final totalUserChips = chips.length;
@@ -311,83 +336,66 @@ class _AdminScreenState extends State<AdminScreen> {
         : user['email']?.toString().split('@')[0] ?? 'Usuario';
     final isActive = user['status'] == 'active';
     final isAdminUser = user['role'] == 'admin';
+    final roleColor = isAdminUser ? SismoColors.red : SismoColors.green;
+    final stateColor = isActive ? SismoColors.green : SismoColors.grayAccent;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        border: Border(bottom: BorderSide(color: s.borderColor)),
       ),
       child: Row(
         children: [
+          // Usuario (nombre + email)
           Expanded(
-            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Text(user['email'] ?? 'Sin email', style: const TextStyle(fontSize: 11, color: Color(0xFF666666))),
-                Text('ID: ${(user['uid'] ?? '').toString().substring(0, 8)}...',
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF888888))),
+                Text(displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: s.textPrimary)),
+                const SizedBox(height: 2),
+                Text(user['email'] ?? 'Sin email',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: s.textMuted)),
               ],
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isAdminUser ? const Color(0xFFDC3545).withOpacity(0.1) : const Color(0xFF28A745).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                isAdminUser ? '👑 ADMIN' : '👤 USER',
-                style: TextStyle(
-                  color: isAdminUser ? const Color(0xFFDC3545) : const Color(0xFF28A745),
-                  fontSize: 12, fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF28A745).withOpacity(0.1) : const Color(0xFF6C757D).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                isActive ? '🟢 ACTIVO' : '🔴 INACTIVO',
-                style: TextStyle(
-                  color: isActive ? const Color(0xFF28A745) : const Color(0xFF6C757D),
-                  fontSize: 12, fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Column(
-              children: [
-                Text('$chipsWithAccess/$totalUserChips',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Text('${totalUserChips > 0 ? (chipsWithAccess / totalUserChips * 100).round() : 0}%',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF666666))),
-              ],
-            ),
-          ),
+          // Rol: solo icono (no cabe el texto en pantalla de telefono)
           SizedBox(
-            width: 70,
-            child: ElevatedButton(
+            width: 38,
+            child: Tooltip(
+              message: isAdminUser ? 'Administrador' : 'Usuario',
+              child: Icon(isAdminUser ? Icons.verified_user : Icons.person, size: 18, color: roleColor),
+            ),
+          ),
+          // Estado: solo punto de color
+          SizedBox(
+            width: 46,
+            child: Tooltip(
+              message: isActive ? 'Activo' : 'Inactivo',
+              child: Icon(Icons.circle, size: 11, color: stateColor),
+            ),
+          ),
+          // Chips autorizados
+          SizedBox(
+            width: 44,
+            child: Text('$chipsWithAccess/$totalUserChips',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: s.textSecondary)),
+          ),
+          // Editar
+          SizedBox(
+            width: 40,
+            child: IconButton(
               onPressed: () => _editUser(user, allChipIds),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3498DB),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-              ),
-              child: const Text('✏️ Editar', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.edit, size: 18),
+              color: SismoColors.blue,
+              tooltip: 'Editar usuario',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             ),
           ),
         ],
@@ -409,7 +417,7 @@ class _AdminScreenState extends State<AdminScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('👤 Editar Usuario'),
+          title: const Row(children: [Icon(Icons.manage_accounts, size: 20), SizedBox(width: 8), Text('Editar Usuario')]),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -432,8 +440,8 @@ class _AdminScreenState extends State<AdminScreen> {
                   value: role,
                   decoration: const InputDecoration(labelText: 'Rol', border: OutlineInputBorder()),
                   items: const [
-                    DropdownMenuItem(value: 'user', child: Text('👤 Usuario')),
-                    DropdownMenuItem(value: 'admin', child: Text('👑 Administrador')),
+                    DropdownMenuItem(value: 'user', child: Row(children: [Icon(Icons.person, size: 16), SizedBox(width: 8), Text('Usuario')])),
+                    DropdownMenuItem(value: 'admin', child: Row(children: [Icon(Icons.verified_user, size: 16), SizedBox(width: 8), Text('Administrador')])),
                   ],
                   onChanged: (v) => setDialogState(() => role = v!),
                 ),
@@ -442,8 +450,8 @@ class _AdminScreenState extends State<AdminScreen> {
                   value: status,
                   decoration: const InputDecoration(labelText: 'Estado', border: OutlineInputBorder()),
                   items: const [
-                    DropdownMenuItem(value: 'active', child: Text('🟢 Activo')),
-                    DropdownMenuItem(value: 'inactive', child: Text('🔴 Inactivo')),
+                    DropdownMenuItem(value: 'active', child: Row(children: [Icon(Icons.circle, size: 12, color: Color(0xFF28A745)), SizedBox(width: 8), Text('Activo')])),
+                    DropdownMenuItem(value: 'inactive', child: Row(children: [Icon(Icons.circle, size: 12, color: Color(0xFF6C757D)), SizedBox(width: 8), Text('Inactivo')])),
                   ],
                   onChanged: (v) => setDialogState(() => status = v!),
                 ),
@@ -464,7 +472,7 @@ class _AdminScreenState extends State<AdminScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                SismoFeedback.show(context, '⏳ Guardando cambios...', color: const Color(0xFF0EA5E9));
+                SismoFeedback.show(context, 'Guardando cambios...', color: const Color(0xFF0EA5E9), icon: Icons.sync);
                 await widget.dbService.updateUser(uid, {
                   'displayName': nameCtrl.text.trim(),
                   'phone': phoneCtrl.text.trim(),
@@ -473,11 +481,15 @@ class _AdminScreenState extends State<AdminScreen> {
                   'chips': chips,
                 });
                 if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) SismoFeedback.show(context, '✅ Usuario actualizado', color: const Color(0xFF28A745));
+                if (mounted) SismoFeedback.show(context, 'Usuario actualizado', color: const Color(0xFF28A745), icon: Icons.check_circle);
                 _loadData();
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF28A745)),
-              child: const Text('💾 Guardar', style: TextStyle(color: Colors.white)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.save, size: 16, color: Colors.white),
+                SizedBox(width: 6),
+                Text('Guardar', style: TextStyle(color: Colors.white)),
+              ]),
             ),
           ],
         ),
@@ -501,7 +513,7 @@ class _AdminScreenState extends State<AdminScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('➕ Crear Usuario'),
+          title: const Row(children: [Icon(Icons.person_add, size: 20), SizedBox(width: 8), Text('Crear Usuario')]),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -540,8 +552,8 @@ class _AdminScreenState extends State<AdminScreen> {
                   value: role,
                   decoration: const InputDecoration(labelText: 'Rol', border: OutlineInputBorder()),
                   items: const [
-                    DropdownMenuItem(value: 'user', child: Text('👤 Usuario')),
-                    DropdownMenuItem(value: 'admin', child: Text('👑 Administrador')),
+                    DropdownMenuItem(value: 'user', child: Row(children: [Icon(Icons.person, size: 16), SizedBox(width: 8), Text('Usuario')])),
+                    DropdownMenuItem(value: 'admin', child: Row(children: [Icon(Icons.verified_user, size: 16), SizedBox(width: 8), Text('Administrador')])),
                   ],
                   onChanged: (v) => setDialogState(() => role = v!),
                 ),
@@ -550,8 +562,8 @@ class _AdminScreenState extends State<AdminScreen> {
                   value: status,
                   decoration: const InputDecoration(labelText: 'Estado', border: OutlineInputBorder()),
                   items: const [
-                    DropdownMenuItem(value: 'active', child: Text('🟢 Activo')),
-                    DropdownMenuItem(value: 'inactive', child: Text('🔴 Inactivo')),
+                    DropdownMenuItem(value: 'active', child: Row(children: [Icon(Icons.circle, size: 12, color: Color(0xFF28A745)), SizedBox(width: 8), Text('Activo')])),
+                    DropdownMenuItem(value: 'inactive', child: Row(children: [Icon(Icons.circle, size: 12, color: Color(0xFF6C757D)), SizedBox(width: 8), Text('Inactivo')])),
                   ],
                   onChanged: (v) => setDialogState(() => status = v!),
                 ),
@@ -604,7 +616,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         saving = true;
                         errorMsg = null;
                       });
-                      SismoFeedback.show(context, '⏳ Creando usuario...', color: const Color(0xFF0EA5E9));
+                      SismoFeedback.show(context, 'Creando usuario...', color: const Color(0xFF0EA5E9), icon: Icons.sync);
                       try {
                         final result = await widget.dbService.createUser(
                           email: email,
@@ -620,9 +632,10 @@ class _AdminScreenState extends State<AdminScreen> {
                           SismoFeedback.show(
                             context,
                             result == 'reactivated'
-                                ? '♻️ Usuario reactivado: $email'
-                                : '✅ Usuario creado: $email',
+                                ? 'Usuario reactivado: $email'
+                                : 'Usuario creado: $email',
                             color: const Color(0xFF28A745),
+                            icon: result == 'reactivated' ? Icons.restore : Icons.check_circle,
                           );
                         }
                         _loadData();
@@ -634,10 +647,10 @@ class _AdminScreenState extends State<AdminScreen> {
                           'operation-not-allowed': 'El registro con email/contraseña está deshabilitado en Firebase.',
                         };
                         final m = map[e.code] ?? (e.message ?? 'No se pudo crear el usuario.');
-                        if (mounted) SismoFeedback.show(context, '❌ $m', color: const Color(0xFFEF4444));
+                        if (mounted) SismoFeedback.show(context, m, color: const Color(0xFFEF4444), icon: Icons.error_outline);
                         setDialogState(() => saving = false);
                       } catch (e) {
-                        if (mounted) SismoFeedback.show(context, '❌ No se pudo crear el usuario: $e', color: const Color(0xFFEF4444));
+                        if (mounted) SismoFeedback.show(context, 'No se pudo crear el usuario: $e', color: const Color(0xFFEF4444), icon: Icons.error_outline);
                         setDialogState(() => saving = false);
                       }
                     },
@@ -657,21 +670,26 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildNodesSection() {
+    final s = context.sismo;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Gestión de Nodos',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+        Text('Gestión de Nodos',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: s.textPrimary)),
         const SizedBox(height: 4),
-        const Text('Configura nombre, zonas y estado de cada dispositivo',
-            style: TextStyle(fontSize: 12, color: Color(0xFF888888))),
+        Text('Configura nombre, zonas y estado de cada dispositivo',
+            style: TextStyle(fontSize: 12, color: s.textMuted)),
         const SizedBox(height: 12),
         if (_nodes.isEmpty)
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-            child: const Center(
-              child: Text('No hay nodos registrados', style: TextStyle(color: Color(0xFF888888))),
+            decoration: BoxDecoration(
+              color: s.bgCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: s.borderColor),
+            ),
+            child: Center(
+              child: Text('No hay nodos registrados', style: TextStyle(color: s.textMuted)),
             ),
           )
         else
@@ -681,6 +699,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _nodeCard(Map<String, dynamic> node) {
+    final s = context.sismo;
     final chipId = node['chipId'] as String;
     final name = node['name'] as String;
     final enabled = node['enabled'] == true;
@@ -697,9 +716,9 @@ class _AdminScreenState extends State<AdminScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
+        color: s.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: s.borderColor),
       ),
       child: Row(
         children: [
@@ -721,7 +740,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     Flexible(
                       child: Text(name,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF333333))),
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: s.textPrimary)),
                     ),
                     if (!enabled) ...[
                       const SizedBox(width: 6),
@@ -739,10 +758,10 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text('ID: $chipId',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF888888), fontFamily: 'monospace')),
+                    style: TextStyle(fontSize: 11, color: s.textMuted, fontFamily: 'monospace')),
                 const SizedBox(height: 2),
                 Text('$zonesActive/5 zonas activas · ${connected ? "Online" : "Offline"}',
-                    style: TextStyle(fontSize: 11, color: connected ? const Color(0xFF28A745) : const Color(0xFF888888))),
+                    style: TextStyle(fontSize: 11, color: connected ? SismoColors.green : s.textMuted)),
               ],
             ),
           ),
@@ -754,8 +773,11 @@ class _AdminScreenState extends State<AdminScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('⚙️ Configurar',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.settings, color: Colors.white, size: 14),
+              SizedBox(width: 4),
+              Text('Configurar', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            ]),
           ),
         ],
       ),
@@ -781,7 +803,7 @@ class _AdminScreenState extends State<AdminScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
-          title: const Text('📡 Configurar Nodo'),
+          title: const Row(children: [Icon(Icons.router, size: 20), SizedBox(width: 8), Text('Configurar Nodo')]),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -843,7 +865,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   ? null
                   : () async {
                       setD(() => saving = true);
-                      SismoFeedback.show(context, '⏳ Guardando configuración...', color: const Color(0xFF0EA5E9));
+                      SismoFeedback.show(context, 'Guardando configuración...', color: const Color(0xFF0EA5E9), icon: Icons.sync);
                       final zones = <String, dynamic>{};
                       for (var i = 1; i <= 5; i++) {
                         final zId = 'c$i';
@@ -861,11 +883,11 @@ class _AdminScreenState extends State<AdminScreen> {
                           zones: zones,
                         );
                         if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) SismoFeedback.show(context, '✅ Nodo guardado', color: const Color(0xFF28A745));
+                        if (mounted) SismoFeedback.show(context, 'Nodo guardado', color: const Color(0xFF28A745), icon: Icons.check_circle);
                         _loadData();
                       } catch (e) {
                         if (mounted) {
-                          SismoFeedback.show(context, '❌ No se pudo guardar: $e', color: const Color(0xFFEF4444));
+                          SismoFeedback.show(context, 'No se pudo guardar: $e', color: const Color(0xFFEF4444), icon: Icons.error_outline);
                         }
                         setD(() => saving = false);
                       }
@@ -889,27 +911,40 @@ class _AdminScreenState extends State<AdminScreen> {
 }
 
 class _StatCard extends StatelessWidget {
+  final IconData icon;
   final String label, value, subtitle;
   final Color borderColor;
 
-  const _StatCard(this.label, this.value, this.subtitle, this.borderColor);
+  const _StatCard(this.icon, this.label, this.value, this.subtitle, this.borderColor);
 
   @override
   Widget build(BuildContext context) {
+    final s = context.sismo;
     return Container(
       width: 150,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
-        border: Border(top: BorderSide(color: borderColor, width: 4)),
+        color: s.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          top: BorderSide(color: borderColor, width: 3),
+          left: BorderSide(color: s.borderColor),
+          right: BorderSide(color: s.borderColor),
+          bottom: BorderSide(color: s.borderColor),
+        ),
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF666666), letterSpacing: 1)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: s.textMuted),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(fontSize: 12, color: s.textMuted, letterSpacing: 1)),
+            ],
+          ),
           const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: s.textPrimary)),
           const SizedBox(height: 5),
           Text(subtitle, style: TextStyle(fontSize: 11, color: borderColor)),
         ],

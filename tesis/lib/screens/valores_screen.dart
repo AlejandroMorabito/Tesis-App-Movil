@@ -20,7 +20,7 @@ class ValoresScreen extends StatelessWidget {
             Container(
               width: 64, height: 64,
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: SismoColors.amber.withOpacity(0.12)),
-              child: const Center(child: Text('🔒', style: TextStyle(fontSize: 28))),
+              child: const Center(child: Icon(Icons.lock_outline, size: 28, color: SismoColors.amber)),
             ),
             const SizedBox(height: 16),
             Text('No tienes acceso a dispositivos', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: s.textPrimary)),
@@ -58,14 +58,14 @@ class _DeviceCard extends StatelessWidget {
     final sensors = dbService.sensorStates[chipId] ?? {};
     final deviceName = device.name.isNotEmpty ? device.name : chipId;
 
-    Color statusColor; String statusIcon, statusText, statusDesc;
+    Color statusColor; String statusText, statusDesc; IconData statusIcon;
     final hasActive = List.generate(5, (i) => sensors['c${i + 1}'] == true).any((v) => v);
     final hasAlarm = sensors['alarma'] == true || device.alarm;
 
-    if (hasAlarm) { statusColor = SismoColors.red; statusIcon = '🚨'; statusText = 'ALARMA'; statusDesc = 'Atención inmediata'; }
-    else if (hasActive) { statusColor = SismoColors.amber; statusIcon = '⚠️'; statusText = 'INTRUSIÓN'; statusDesc = 'Intrusión detectada'; }
-    else if (sensors['armado'] == true || device.armed) { statusColor = SismoColors.green; statusIcon = '🛡️'; statusText = 'ARMADO'; statusDesc = 'Sistema vigilando'; }
-    else { statusColor = SismoColors.grayAccent; statusIcon = '🔓'; statusText = 'DESARMADO'; statusDesc = 'Sistema inactivo'; }
+    if (hasAlarm) { statusColor = SismoColors.red; statusIcon = Icons.notifications_active; statusText = 'ALARMA'; statusDesc = 'Atención inmediata'; }
+    else if (hasActive) { statusColor = SismoColors.amber; statusIcon = Icons.warning_amber_rounded; statusText = 'INTRUSIÓN'; statusDesc = 'Intrusión detectada'; }
+    else if (sensors['armado'] == true || device.armed) { statusColor = SismoColors.green; statusIcon = Icons.shield; statusText = 'ARMADO'; statusDesc = 'Sistema vigilando'; }
+    else { statusColor = SismoColors.grayAccent; statusIcon = Icons.lock_open; statusText = 'DESARMADO'; statusDesc = 'Sistema inactivo'; }
 
     String signalQ; Color signalC;
     if (device.rssi >= -50) { signalQ = 'Excelente'; signalC = SismoColors.green; }
@@ -104,7 +104,11 @@ class _DeviceCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                        child: Text('$statusIcon $statusText', style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w500)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(statusIcon, color: statusColor, size: 12),
+                          const SizedBox(width: 4),
+                          Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w500)),
+                        ]),
                       ),
                     ],
                   ),
@@ -120,7 +124,7 @@ class _DeviceCard extends StatelessWidget {
                       gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.5)]),
                       boxShadow: [BoxShadow(color: statusColor.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))],
                     ),
-                    child: Center(child: Text(statusIcon, style: const TextStyle(fontSize: 32))),
+                    child: Center(child: Icon(statusIcon, color: Colors.white, size: 36)),
                   ),
                   const SizedBox(height: 16),
 
@@ -137,8 +141,14 @@ class _DeviceCard extends StatelessWidget {
                           decoration: BoxDecoration(color: active ? SismoColors.red : SismoColors.green, borderRadius: BorderRadius.circular(8)),
                           child: Column(
                             children: [
-                              Text('C${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                              Text(active ? '🔴' : '🟢', style: const TextStyle(fontSize: 13)),
+                              Text(
+                                dbService.zoneLabel(chipId, 'c${i + 1}'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                              ),
+                              const Icon(Icons.fence, color: Colors.white, size: 16),
                             ],
                           ),
                         ),

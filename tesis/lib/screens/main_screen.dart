@@ -90,17 +90,14 @@ class _MainScreenState extends State<MainScreen> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            // Logo
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: const LinearGradient(colors: [SismoColors.teal, SismoColors.blue]),
-              ),
-              child: const Icon(Icons.shield, color: Colors.white, size: 18),
+            // Logo VenIoT (en línea, según el tema)
+            Image.asset(
+              context.isDark
+                  ? 'assets/logos/veniot-inline-dark.png'
+                  : 'assets/logos/veniot-inline-light.png',
+              height: 30,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(width: 10),
-            Text('SISMO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: s.textPrimary, letterSpacing: 0.5)),
           ],
         ),
         actions: [

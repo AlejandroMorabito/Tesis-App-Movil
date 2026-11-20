@@ -42,7 +42,7 @@ class _SismoAppState extends State<SismoApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SISMO',
+      title: 'VenIoT',
       debugShowCheckedModeBanner: false,
       theme: sismoLightTheme,
       darkTheme: sismoDarkTheme,

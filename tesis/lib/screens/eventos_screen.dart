@@ -93,7 +93,7 @@ class _EventosScreenState extends State<EventosScreen> {
   }
 
   Widget _eventCard(SismoThemeExtension s, AlarmEvent e) {
-    final name = DatabaseService.getEventDisplayName(e.eventType);
+    final name = widget.dbService.eventLabel(e.eventType, chipId: e.deviceId);
     final deviceName = widget.dbService.devicesState[e.deviceId]?.name ?? e.deviceId;
     final activated = e.eventValue;
     final t = e.eventType.toLowerCase();

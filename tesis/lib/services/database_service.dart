@@ -6,6 +6,15 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+/// El ESP32 escribe `last_seen` en SEGUNDOS (Unix epoch), pero
+/// DateTime.now().millisecondsSinceEpoch está en milisegundos. Sin normalizar,
+/// la resta siempre da un número enorme y todo aparece "Desconectado".
+int toMillis(dynamic ts) {
+  final n = ts is int ? ts : int.tryParse('${ts ?? ''}') ?? 0;
+  if (n <= 0) return 0;
+  return n > 1000000000000 ? n : n * 1000;
+}
+
 class DeviceState {
   final bool alarm;
   final bool armed;
@@ -64,6 +73,8 @@ class DatabaseService extends ChangeNotifier {
   Map<String, bool> userPermissions = {};
   Map<String, DeviceState> devicesState = {};
   Map<String, Map<String, bool>> sensorStates = {};
+  /// chipId -> zoneId -> nombre personalizado de la zona
+  Map<String, Map<String, String>> zoneNames = {};
   List<AlarmEvent> currentData = [];
   Map<String, dynamic>? userData;
   bool webhookReady = false;
@@ -146,7 +157,7 @@ class DatabaseService extends ChangeNotifier {
         alarm: state['alarm_active'] == true,
         armed: state['system_armed'] == true,
         intrusion: state['any_intrusion'] == true,
-        lastSeen: (data['last_seen'] as int?) ?? 0,
+        lastSeen: toMillis(data['last_seen']),
         rssi: (data['rssi'] as int?) ?? -90,
         ip: (data['ip_address'] as String?) ?? 'N/A',
         mac: (data['mac_address'] as String?) ?? 'N/A',
@@ -157,6 +168,18 @@ class DatabaseService extends ChangeNotifier {
         sensorStates[chipId] = {};
         for (var sEntry in sensors.entries) {
           sensorStates[chipId]![sEntry.key.toString()] = sEntry.value == true;
+        }
+      }
+
+      final zones = data['zones'] as Map?;
+      if (zones != null) {
+        zoneNames[chipId] = {};
+        for (var z in zones.entries) {
+          final zd = z.value as Map?;
+          final zn = zd?['name']?.toString();
+          if (zn != null && zn.trim().isNotEmpty) {
+            zoneNames[chipId]![z.key.toString()] = zn.trim();
+          }
         }
       }
     }
@@ -218,7 +241,7 @@ class DatabaseService extends ChangeNotifier {
           alarm: state['alarm_active'] == true,
           armed: state['system_armed'] == true,
           intrusion: state['any_intrusion'] == true,
-          lastSeen: (data['last_seen'] as int?) ?? 0,
+          lastSeen: toMillis(data['last_seen']),
           rssi: (data['rssi'] as int?) ?? -90,
           ip: (data['ip_address'] as String?) ?? 'N/A',
           mac: (data['mac_address'] as String?) ?? 'N/A',
@@ -229,6 +252,18 @@ class DatabaseService extends ChangeNotifier {
           sensorStates[chipId] = {};
           for (var sEntry in sensors.entries) {
             sensorStates[chipId]![sEntry.key.toString()] = sEntry.value == true;
+          }
+        }
+
+          final zones = data['zones'] as Map?;
+        if (zones != null) {
+          zoneNames[chipId] = {};
+          for (var z in zones.entries) {
+            final zd = z.value as Map?;
+            final zn = zd?['name']?.toString();
+            if (zn != null && zn.trim().isNotEmpty) {
+              zoneNames[chipId]![z.key.toString()] = zn.trim();
+            }
           }
         }
 
@@ -438,7 +473,7 @@ class DatabaseService extends ChangeNotifier {
         'zones': (data['zones'] as Map?) ?? {},
         'rssi': (data['rssi'] as int?) ?? -90,
         'ip': (data['ip_address'] ?? 'N/A').toString(),
-        'lastSeen': (data['last_seen'] as int?) ?? 0,
+        'lastSeen': toMillis(data['last_seen']),
       });
     }
     nodes.sort((a, b) => a['chipId'].toString().compareTo(b['chipId'].toString()));
@@ -571,6 +606,23 @@ class DatabaseService extends ChangeNotifier {
   }
 
   // ==================== HELPERS ====================
+
+  /// Nombre de la zona/cerco: el personalizado si existe, si no "C1".."C5".
+  String zoneLabel(String chipId, String zoneId) {
+    final custom = zoneNames[chipId]?[zoneId];
+    if (custom != null && custom.trim().isNotEmpty) return custom.trim();
+    return zoneId.toUpperCase();
+  }
+
+  /// Nombre legible del evento, usando el nombre personalizado de la zona si lo tiene.
+  String eventLabel(String eventType, {String? chipId}) {
+    if (chipId != null && eventType.contains('sensores/')) {
+      final zoneId = eventType.split('/').last;
+      final custom = zoneNames[chipId]?[zoneId];
+      if (custom != null && custom.trim().isNotEmpty) return custom.trim();
+    }
+    return getEventDisplayName(eventType);
+  }
 
   static String getEventDisplayName(String eventType) {
     const names = {

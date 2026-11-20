@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Perfil actualizado'), backgroundColor: Color(0xFF28A745)),
+        const SnackBar(content: Text('Perfil actualizado'), backgroundColor: Color(0xFF28A745)),
       );
     }
   }
@@ -78,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _authService.changePassword(newPass);
       setState(() {
-        _passMsg = '✅ Contraseña actualizada correctamente';
+        _passMsg = 'Contraseña actualizada correctamente';
         _passMsgColor = const Color(0xFF28A745);
       });
       _newPassController.clear();
@@ -173,10 +173,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: role == 'admin' ? const Color(0xFFDC3545).withOpacity(0.9) : const Color(0xFF28A745).withOpacity(0.9),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Text(
-                      role == 'admin' ? '👑 ADMINISTRADOR' : '👤 USUARIO',
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(role == 'admin' ? Icons.verified_user : Icons.person, color: Colors.white, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        role == 'admin' ? 'ADMINISTRADOR' : 'USUARIO',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ]),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -185,7 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (_isEditing) ...[
                         ElevatedButton.icon(
                           onPressed: _saveProfile,
-                          icon: const Text('💾'),
+                          icon: const Icon(Icons.save, size: 18),
                           label: const Text('Guardar'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF28A745),
@@ -196,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(width: 10),
                         OutlinedButton.icon(
                           onPressed: () => setState(() => _isEditing = false),
-                          icon: const Text('❌'),
+                          icon: const Icon(Icons.close, size: 18, color: Colors.white),
                           label: const Text('Cancelar', style: TextStyle(color: Colors.white)),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.white),
@@ -206,7 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ] else
                         ElevatedButton.icon(
                           onPressed: () => setState(() => _isEditing = true),
-                          icon: const Text('✏️'),
+                          icon: const Icon(Icons.edit, size: 18),
                           label: const Text('Editar Perfil'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3498DB),
@@ -227,10 +231,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   // Personal info
                   _SectionCard(
-                    icon: '👤',
+                    icon: Icons.person,
                     title: 'Información Personal',
                     children: [
-                      _InfoItem('📧 Correo', user.email!),
+                      _InfoItem(Icons.email_outlined, 'Correo', user.email!),
                       if (_isEditing)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -238,7 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             controller: _phoneController,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
-                              labelText: '📱 Teléfono',
+                              labelText: 'Teléfono',
                               labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
                               filled: true,
                               fillColor: Colors.white.withOpacity(0.1),
@@ -248,17 +252,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         )
                       else
-                        _InfoItem('📱 Teléfono', phone),
-                      _InfoItem('🔰 Rol', role == 'admin' ? 'Administrador' : 'Usuario'),
-                      _InfoItem('📊 Estado', status == 'active' ? '🟢 Activo' : '🔴 Inactivo'),
-                      _InfoItem('📱 Dispositivos', '$chipsWithAccess/${chips.length} autorizados'),
+                        _InfoItem(Icons.phone, 'Teléfono', phone),
+                      _InfoItem(Icons.badge_outlined, 'Rol', role == 'admin' ? 'Administrador' : 'Usuario'),
+                      _InfoItem(Icons.info_outline, 'Estado', status == 'active' ? 'Activo' : 'Inactivo'),
+                      _InfoItem(Icons.router, 'Dispositivos', '$chipsWithAccess/${chips.length} autorizados'),
                     ],
                   ),
                   const SizedBox(height: 20),
 
                   // Change password
                   _SectionCard(
-                    icon: '🔑',
+                    icon: Icons.vpn_key,
                     title: 'Cambiar Contraseña',
                     children: [
                       TextField(
@@ -301,8 +305,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text('🔐 Actualizar Contraseña',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.lock_reset, size: 18),
+                              SizedBox(width: 8),
+                              Text('Actualizar Contraseña',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -327,7 +338,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _SectionCard extends StatelessWidget {
-  final String icon, title;
+  final IconData icon;
+  final String title;
   final List<Widget> children;
 
   const _SectionCard({required this.icon, required this.title, required this.children});
@@ -352,7 +364,7 @@ class _SectionCard extends StatelessWidget {
                   gradient: const LinearGradient(colors: [Color(0xFF4CD964), Color(0xFF28A745)]),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Center(child: Text(icon, style: const TextStyle(fontSize: 16))),
+                child: Center(child: Icon(icon, color: Colors.white, size: 18)),
               ),
               const SizedBox(width: 10),
               Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -367,8 +379,9 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _InfoItem extends StatelessWidget {
+  final IconData icon;
   final String label, value;
-  const _InfoItem(this.label, this.value);
+  const _InfoItem(this.icon, this.label, this.value);
 
   @override
   Widget build(BuildContext context) {
@@ -377,8 +390,18 @@ class _InfoItem extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
+          Row(
+            children: [
+              Icon(icon, size: 15, color: Colors.white.withOpacity(0.6)),
+              const SizedBox(width: 8),
+              Text(label, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
+            ],
+          ),
+          Flexible(
+            child: Text(value,
+                textAlign: TextAlign.right,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
+          ),
         ],
       ),
     );

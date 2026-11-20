@@ -9,6 +9,7 @@ class SismoFeedback {
     BuildContext context,
     String message, {
     Color color = const Color(0xFF0EA5E9),
+    IconData? icon,
     Duration duration = const Duration(seconds: 2),
   }) {
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
@@ -42,13 +43,24 @@ class SismoFeedback {
                     ),
                   ],
                 ),
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    color: Color(0xFFE2E8F0),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, color: color, size: 18),
+                      const SizedBox(width: 8),
+                    ],
+                    Flexible(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Color(0xFFE2E8F0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

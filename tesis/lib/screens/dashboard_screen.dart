@@ -25,7 +25,7 @@ class DashboardScreen extends StatelessWidget {
             Container(
               width: 64, height: 64,
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: SismoColors.amber.withOpacity(0.12)),
-              child: const Center(child: Text('🔒', style: TextStyle(fontSize: 28))),
+              child: const Center(child: Icon(Icons.lock_outline, size: 28, color: SismoColors.amber)),
             ),
             const SizedBox(height: 16),
             Text('No tienes acceso a dispositivos', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: s.textPrimary)),

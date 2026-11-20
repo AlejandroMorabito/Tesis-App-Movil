@@ -113,18 +113,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo
-                      Container(
-                        width: 56, height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          gradient: const LinearGradient(colors: [SismoColors.teal, SismoColors.blue]),
-                        ),
-                        child: const Icon(Icons.shield, color: Colors.white, size: 28),
+                      // Logo VenIoT (centrado, según el tema)
+                      Image.asset(
+                        isDark
+                            ? 'assets/logos/veniot-centered-dark.png'
+                            : 'assets/logos/veniot-centered-light.png',
+                        height: 130,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 16),
-                      Text('SISMO', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: s.textPrimary, letterSpacing: 0.5)),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text('Security Dashboard — Acceso Seguro', style: TextStyle(fontSize: 13, color: s.textMuted)),
                       const SizedBox(height: 28),
 

@@ -21,12 +21,12 @@ class _ControlModalState extends State<ControlModal> {
 
   // Muestra "procesando..." arriba, ejecuta la acción y confirma el resultado.
   Future<void> _sendCmd(String label, Future<void> Function() action) async {
-    SismoFeedback.show(context, '⏳ $label...', color: SismoColors.blue);
+    SismoFeedback.show(context, '$label...', color: SismoColors.blue, icon: Icons.sync);
     try {
       await action();
-      if (mounted) SismoFeedback.show(context, '✅ $label', color: SismoColors.green);
+      if (mounted) SismoFeedback.show(context, label, color: SismoColors.green, icon: Icons.check_circle);
     } catch (_) {
-      if (mounted) SismoFeedback.show(context, '❌ Error: $label', color: SismoColors.red);
+      if (mounted) SismoFeedback.show(context, 'Error: $label', color: SismoColors.red, icon: Icons.error_outline);
     }
   }
 
@@ -42,7 +42,7 @@ class _ControlModalState extends State<ControlModal> {
         decoration: BoxDecoration(color: s.bgCard, borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
         padding: const EdgeInsets.all(40),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('❌', style: TextStyle(fontSize: 36)),
+          const Icon(Icons.error_outline, size: 40, color: SismoColors.red),
           const SizedBox(height: 12),
           Text('Dispositivo no encontrado', style: TextStyle(fontSize: 16, color: s.textPrimary)),
         ]),
@@ -50,11 +50,11 @@ class _ControlModalState extends State<ControlModal> {
     }
 
     final deviceName = device.name.isNotEmpty ? device.name : chipId;
-    Color statusColor; String statusText, statusIcon;
-    if (device.alarm) { statusColor = SismoColors.red; statusText = 'ALARMA ACTIVA'; statusIcon = '🚨'; }
-    else if (device.intrusion) { statusColor = SismoColors.amber; statusText = 'INTRUSIÓN'; statusIcon = '⚠️'; }
-    else if (device.armed) { statusColor = SismoColors.green; statusText = 'ARMADO'; statusIcon = '🛡️'; }
-    else { statusColor = SismoColors.grayAccent; statusText = 'DESARMADO'; statusIcon = '🔓'; }
+    Color statusColor; String statusText; IconData statusIcon;
+    if (device.alarm) { statusColor = SismoColors.red; statusText = 'ALARMA ACTIVA'; statusIcon = Icons.notifications_active; }
+    else if (device.intrusion) { statusColor = SismoColors.amber; statusText = 'INTRUSIÓN'; statusIcon = Icons.warning_amber_rounded; }
+    else if (device.armed) { statusColor = SismoColors.green; statusText = 'ARMADO'; statusIcon = Icons.shield; }
+    else { statusColor = SismoColors.grayAccent; statusText = 'DESARMADO'; statusIcon = Icons.lock_open; }
 
     int activos = 0;
     for (var i = 1; i <= 5; i++) { if (sensors['c$i'] == true) activos++; }
@@ -93,14 +93,18 @@ class _ControlModalState extends State<ControlModal> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                    child: Text('$statusIcon $statusText', style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w500)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(statusIcon, color: statusColor, size: 13),
+                      const SizedBox(width: 4),
+                      Text(statusText, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w500)),
+                    ]),
                   ),
                 ]),
                 const SizedBox(height: 16),
                 Container(
                   width: 72, height: 72,
                   decoration: BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [statusColor, statusColor.withOpacity(0.5)]), boxShadow: [BoxShadow(color: statusColor.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))]),
-                  child: Center(child: Text(statusIcon, style: const TextStyle(fontSize: 30))),
+                  child: Center(child: Icon(statusIcon, color: Colors.white, size: 34)),
                 ),
                 const SizedBox(height: 16),
                 Row(children: [
@@ -125,9 +129,15 @@ class _ControlModalState extends State<ControlModal> {
                   margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(color: active ? SismoColors.red : SismoColors.green, borderRadius: BorderRadius.circular(8)),
                   child: Column(children: [
-                    Text('C${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text(
+                      widget.dbService.zoneLabel(chipId, sName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
                     const SizedBox(height: 4),
-                    Text(active ? '🔴' : '🟢', style: const TextStyle(fontSize: 18)),
+                    const Icon(Icons.fence, color: Colors.white, size: 20),
                     const SizedBox(height: 4),
                     Text(active ? 'ACTIVO' : 'NORMAL', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 10)),
                   ]),
